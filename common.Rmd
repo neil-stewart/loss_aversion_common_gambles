@@ -1,0 +1,215 @@
+---
+title: "Analysis of Walasek and Stewart Common Gambles for Reply to Andre and de Langhe"
+author: "Neil Stewart"
+date: '`r format(Sys.time(), "%d %B %Y")`'
+output:
+   html_document:
+    toc: true
+    toc_depth: 3
+---
+
+---
+
+```{r Setup}
+library(data.table)
+library(ggplot2)
+library(emmeans)
+library(stringr)
+library(gridExtra)
+```
+
+# Experiment 1A
+
+```{r}
+data.1A <- fread("experiment_1A_raw.csv", colClasses=c("factor", "integer", "integer", "character",  "character", "integer"))
+
+data.1A[,condition:=factor(condition, levels=c("20.20","40.40","20.40","40.20"), labels=c("20,20","40,40","20,40","40,20"))]
+
+gambles.1A <- unique(data.1A[,.(loss, gain, condition)])[order(condition,gain,loss),]
+
+ggplot(gambles.1A, aes(x=gain, y=loss)) + geom_point() + facet_wrap(~condition) + coord_equal()
+
+# Identify common gambles by repeatedly merging all four conditions
+common.gambles.1A <- merge(merge(merge(gambles.1A[condition=="20,20", .(gain,loss)],
+	gambles.1A[condition=="20,40", .(gain,loss)]), 
+	gambles.1A[condition=="40,20", .(gain,loss)]), 
+	gambles.1A[condition=="40,40", .(gain,loss)])
+common.gambles.1A[,common:=TRUE]
+
+# Flag the common gambles and plot to check
+gambles.1A <- merge(gambles.1A, common.gambles.1A, by=c("gain", "loss"), all=TRUE)
+gambles.1A[is.na(common), common:=FALSE]
+ggplot(gambles.1A, aes(x=gain, y=loss, col=common)) + geom_point() + facet_wrap(~condition) + coord_equal()
+
+# Same code to flag in the raw data
+data.1A <- merge(data.1A, common.gambles.1A, by=c("gain", "loss"), all=TRUE)
+data.1A[is.na(common), common:=FALSE]
+
+# prop.accept.1A <- data.1A[(common), .(sum.accept=sum(resp), prop.accept=mean(resp), N=.N), by=.(gain,loss, condition)][order(condition, gain, loss),]
+# ggplot(prop.accept.1A, aes(x=gain, y=prop.accept, col=condition)) + geom_point() + geom_line() + facet_wrap(~as.factor(loss))
+#m1A <- glm(resp ~ as.factor(gain) * as.factor(loss) * condition, family=binomial, data=data.1A[(common),])
+#(  m1A.emm <- emmeans(m1A, ~gain+loss+condition, type="response")  )
+#m1A.emm.dt <- as.data.table(summary(m1A.emm))
+#m1A.emm.dt[,loss.label:=paste("Loss=", loss, sep="")]
+#(  plot.1A <- ggplot(m1A.emm.dt, aes(x=gain, y=prob, col=condition)) + geom_point() + geom_line() + facet_wrap(~loss.label) + geom_ribbon(aes(ymin=asymp.LCL,      ymax=asymp.UCL, fill=condition, alpha=0.105, col=NULL), show.legend=FALSE) + labs(x="Gain", col="Condition", title="Experiment 1A")  )
+
+labels <- data.table(x=c(4.35,4.35), y=c(0.25,0.75), text=c("Loss Aversion", "Reversed\nLoss Aversion"))
+
+prop.accept.by.sub.1A <- data.1A[(common), .(prop.accept=mean(resp)), by=.(subno, condition)][order(condition, subno),]
+m1A <- glm(resp ~ condition, family=binomial, data=data.1A[(common),])
+(  m1A.emm <- emmeans(m1A, ~condition, type="response")  )
+m1A.emm.dt <- as.data.table(summary(m1A.emm))
+(  plot.1A <- ggplot(m1A.emm.dt, aes(x=condition, y=prob, ymin=asymp.LCL, ymax=asymp.UCL)) + geom_point() + geom_linerange() + ylim(0,1) +labs(x="Condition (Max Gain, Max Loss)", y="P(Accept)", title="Experiment 1A") + geom_hline(yintercept=0.5, lty=2) + geom_text(data=labels, aes(x=x,y=y,label=text, ymin=NULL, ymax=NULL))  )
+```
+
+# Experiment 1B
+
+```{r}
+data.1B <- fread("experiment_1B_raw.csv", colClasses=c("factor", "integer", "integer", "character",  "character", "integer"))
+
+data.1B[,condition:=factor(condition, levels=c("20.20","40.40","20.40","40.20"), labels=c("20,20","40,40","20,40","40,20"))]
+
+gambles.1B <- unique(data.1B[,.(loss, gain, condition)])[order(condition,gain,loss),]
+
+ggplot(gambles.1B, aes(x=gain, y=loss)) + geom_point() + facet_wrap(~condition) + coord_equal()
+
+# Identify common gambles by repeatedly merging all four conditions
+common.gambles.1B <- merge(merge(merge(gambles.1B[condition=="20,20", .(gain,loss)],
+	gambles.1B[condition=="20,40", .(gain,loss)]), 
+	gambles.1B[condition=="40,20", .(gain,loss)]), 
+	gambles.1B[condition=="40,40", .(gain,loss)])
+common.gambles.1B[,common:=TRUE]
+
+# Flag the common gambles and plot to check
+gambles.1B <- merge(gambles.1B, common.gambles.1B, by=c("gain", "loss"), all=TRUE)
+gambles.1B[is.na(common), common:=FALSE]
+ggplot(gambles.1B, aes(x=gain, y=loss, col=common)) + geom_point() + facet_wrap(~condition) + coord_equal()
+
+# Same code to flag in the raw data
+data.1B <- merge(data.1B, common.gambles.1B, by=c("gain", "loss"), all=TRUE)
+data.1B[is.na(common), common:=FALSE]
+
+prop.accept.by.sub.1B <- data.1B[(common), .(prop.accept=mean(resp)), by=.(subno, condition)][order(condition, subno),]
+m1B <- glm(resp ~ condition, family=binomial, data=data.1B[(common),])
+(  m1B.emm <- emmeans(m1B, ~condition, type="response")  )
+m1B.emm.dt <- as.data.table(summary(m1B.emm))
+(  plot.1B <- ggplot(m1B.emm.dt, aes(x=condition, y=prob, ymin=asymp.LCL, ymax=asymp.UCL)) + geom_point() + geom_linerange() + ylim(0,1) +labs(x="Condition (Max Gain, Max Loss)", y="P(Accept)", title="Experiment 1B") + geom_hline(yintercept=0.5, lty=2) + geom_text(data=labels, aes(x=x,y=y, label=text, ymin=NULL, ymax=NULL))  )
+```
+
+# Experiment 2
+
+```{r}
+data.2 <- fread("experiment_2_raw.csv", colClasses=c("factor", "integer", "integer", "character",  "character", "integer"))
+
+data.2[,condition:=factor(condition, levels=c("20.60","60.20"), labels=c("20,60","60,20"))]
+
+gambles.2 <- unique(data.2[,.(loss, gain, condition)])[order(condition,gain,loss),]
+
+ggplot(gambles.2, aes(x=gain, y=loss)) + geom_point() + facet_wrap(~condition) + coord_equal()
+
+# Identify common gambles by repeatedly merging all four conditions
+common.gambles.2 <- merge(gambles.2[condition=="20,60", .(gain,loss)],
+	gambles.2[condition=="60,20", .(gain,loss)])
+common.gambles.2[,common:=TRUE]
+
+# Flag the common gambles and plot to check
+gambles.2 <- merge(gambles.2, common.gambles.2, by=c("gain", "loss"), all=TRUE)
+gambles.2[is.na(common), common:=FALSE]
+ggplot(gambles.2, aes(x=gain, y=loss, col=common)) + geom_point() + facet_wrap(~condition) + coord_equal()
+
+# Same code to flag in the raw data
+data.2 <- merge(data.2, common.gambles.2, by=c("gain", "loss"), all=TRUE)
+data.2[is.na(common), common:=FALSE]
+
+prop.accept.by.sub.2 <- data.2[(common), .(prop.accept=mean(resp)), by=.(subno, condition)][order(condition, subno),]
+m2 <- glm(resp ~ condition, family=binomial, data=data.2[(common),])
+(  m2.emm <- emmeans(m2, ~condition, type="response")  )
+m2.emm.dt <- as.data.table(summary(m2.emm))
+blank.conditions <- data.table(condition=factor(
+	c("20,20","60,60","20,60","60,20"), 
+	levels=c("20,20","60,60","20,60","60,20"),
+	labels=c(""," ","20,60","60,20")))
+m2.emm.dt <- merge(blank.conditions, m2.emm.dt, all=TRUE, by="condition")
+(  plot.2 <- ggplot(m2.emm.dt, aes(x=condition, y=prob, ymin=asymp.LCL, ymax=asymp.UCL)) + geom_point() + geom_linerange() + ylim(0,1) +labs(x="Condition (Max Gain, Max Loss)", y="P(Accept)", title="Experiment 2") + geom_hline(yintercept=0.5, lty=2) + geom_text(data=labels, aes(x=x,y=y, label=text, ymin=NULL, ymax=NULL)))
+```
+
+
+# Experiment 3
+
+```{r}
+data.3 <- fread("experiment_3_raw.csv", colClasses=c("factor", "integer", "integer", "character",  "character", "integer"))
+
+data.3[,condition:=factor(condition, levels=c("40.40","20.40","40.20"), labels=c("40,40","20,40","40,20"))]
+
+gambles.3 <- unique(data.3[,.(loss, gain, condition)])[order(condition,gain,loss),]
+
+ggplot(gambles.3, aes(x=gain, y=loss)) + geom_point() + facet_wrap(~condition) + coord_equal()
+
+# Identify common gambles by repeatedly merging all four conditions
+common.gambles.3 <- merge(merge(
+	gambles.3[condition=="20,40", .(gain,loss)], 
+	gambles.3[condition=="40,20", .(gain,loss)]), 
+	gambles.3[condition=="40,40", .(gain,loss)])
+common.gambles.3[,common:=TRUE]
+
+# Flag the common gambles and plot to check
+gambles.3 <- merge(gambles.3, common.gambles.3, by=c("gain", "loss"), all=TRUE)
+gambles.3[is.na(common), common:=FALSE]
+ggplot(gambles.3, aes(x=gain, y=loss, col=common)) + geom_point() + facet_wrap(~condition) + coord_equal()
+
+# Same code to flag in the raw data
+data.3 <- merge(data.3, common.gambles.3, by=c("gain", "loss"), all=TRUE)
+data.3[is.na(common), common:=FALSE]
+
+prop.accept.by.sub.3 <- data.3[(common), .(prop.accept=mean(resp)), by=.(subno, condition)][order(condition, subno),]
+m3 <- glm(resp ~ condition, family=binomial, data=data.3[(common),])
+(  m3.emm <- emmeans(m3, ~condition, type="response")  )
+m3.emm.dt <- as.data.table(summary(m3.emm))
+blank.conditions <- data.table(condition=factor(
+	c("20,20","40,40","20,40","40,20"), 
+	levels=c("20,20","40,40","20,40","40,20"),
+	labels=c("","40,40","20,40","40,20")))
+m3.emm.dt <- merge(blank.conditions, m3.emm.dt, all=TRUE, by="condition")
+(  plot.3 <- ggplot(m3.emm.dt, aes(x=condition, y=prob, ymin=asymp.LCL, ymax=asymp.UCL)) + geom_point() + geom_linerange() + ylim(0,1) +labs(x="Condition (Max Gain, Max Loss)", y="P(Accept)", title="Experiment 3") + geom_hline(yintercept=0.5, lty=2) + geom_text(data=labels, aes(x=x,y=y, label=text, ymin=NULL, ymax=NULL)))
+```
+
+# DbS Predictions for Experiment 1A (or B)
+
+```{r}
+gambles.1A[,max.gain:=as.integer(str_sub(condition,1,2))]
+gambles.1A[,max.loss:=as.integer(str_sub(condition,4,5))]
+
+logistic <- function(x) {1/(1+exp(-x))}
+
+gambles.1A[,prob:=logistic(2*(gain/max.gain - loss/max.loss))]
+
+gambles.1A.common <- gambles.1A[(common), .(prob=mean(prob)), by=.(condition)]
+
+(  plot.DbS <- ggplot(gambles.1A.common, aes(x=condition, y=prob)) + geom_point(size=2) + ylim(0,1) +labs(x="Condition (Max Gain, Max Loss)", y="P(Accept)", title="DbS Prediction") + geom_hline(yintercept=0.5, lty=2) + geom_text(data=labels, aes(x=x,y=y,  label=text, ymin=NULL, ymax=NULL))  )
+```
+
+# Make 4 Expts in 1 Plot
+
+```{r}
+gambles.1A.common[,expt:="DbS Prediction"]
+m1A.emm.dt[,expt:="Experiment 1A"]
+m1B.emm.dt[,expt:="Experiment 1B"]
+m2.emm.dt[,expt:="Experiment 2"]
+m3.emm.dt[,expt:="Experiment 3"]
+
+all <- rbindlist(list(gambles.1A.common, m1A.emm.dt, m1B.emm.dt, m2.emm.dt, m3.emm.dt), fill=TRUE)
+
+all <- all[!is.na(prob),]
+all[,max.gain:=as.integer(str_sub(condition,1,2))]
+all[,max.loss:=as.integer(str_sub(condition,4,5))]
+all[,cond2:=paste(ifelse(max.gain==20, "Low", "High"), ifelse(max.loss==20, "Low", "High"),sep=",\n")]
+all[,cond2:=factor(cond2, levels=c("Low,\nLow","High,\nHigh","Low,\nHigh","High,\nLow"))]
+all[,colour:=as.factor(sign(max.gain-max.loss))]
+
+ggplot(all, aes(y=prob, x=cond2, ymin=asymp.LCL, ymax=asymp.UCL, col=colour)) + geom_point(show.legend=FALSE, size=3) + geom_linerange(show.legend=FALSE) + ylim(0,1) + facet_grid(.~expt) + geom_hline(yintercept=0.5, lty=2) + labs(x="Condition (Max Gain, Max Loss)", y="P(Accept)") + theme_classic() + theme(strip.background = element_blank(), strip.text=element_text(size=12), panel.background=element_rect(fill="grey94"))
+
+ggsave("proportion_accept.pdf", width=8, height=6)
+```
+
+
+
